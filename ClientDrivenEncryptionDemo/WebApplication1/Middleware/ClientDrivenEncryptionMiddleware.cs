@@ -43,25 +43,23 @@ public class ClientDrivenEncryptionMiddleware : IMiddleware
         var fromBase64String = Convert.FromBase64String(publicKey);
         var asString = Encoding.UTF8.GetString(fromBase64String);
         var jsonWebKey = JsonSerializer.Deserialize<JsonWebKey>(asString);
-        
+
+        //body = "Hello, World!";
+        var dataToEncrypt = Encoding.UTF8.GetBytes(body);
+
         var rsaParameters = new RSAParameters
         {
             Exponent = DecodeUrlBase64(jsonWebKey.e),
             Modulus = DecodeUrlBase64(jsonWebKey.n)
         };
         
-        var dataToEncrypt = Encoding.UTF8.GetBytes(body);
-        dataToEncrypt = "Hello, World!"u8.ToArray();
-        
-        var rsaCryptoServiceProvider = new RSACryptoServiceProvider(2048);
-        rsaCryptoServiceProvider.ImportParameters(rsaParameters);
-        rsaCryptoServiceProvider.PersistKeyInCsp = false;
-        
-        var value = rsaCryptoServiceProvider.Encrypt(dataToEncrypt, RSAEncryptionPadding.Pkcs1);
-        
-        Console.WriteLine("Sending byte array: " + string.Join(", ", value));
+        Console.WriteLine("Exponent: " + string.Join(", ", rsaParameters.Exponent));
+        Console.WriteLine("Modulus: " + string.Join(", ", rsaParameters.Modulus));
 
-        return Convert.ToBase64String(value);
+        var rsa = RSA.Create(rsaParameters);
+        var value = rsa.Encrypt(dataToEncrypt, RSAEncryptionPadding.OaepSHA256);
+
+        return Convert.ToBase64String(value, Base64FormattingOptions.None);
     }
 
     private static byte[] DecodeUrlBase64(string s)
