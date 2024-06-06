@@ -1,4 +1,23 @@
-﻿async function generateKeyPair() {
+﻿async function callApi() {
+    const { publicJwk, privateKey } = await generateKeyPair();
+
+    console.log("Sending request with public key:", publicJwk);
+
+    const result = await fetch('/api', {
+        method: 'GET',
+        headers: {
+            'Accept': 'application/json',
+            'Client-Encryption-Key': btoa(JSON.stringify(publicJwk))
+        }
+    });
+
+    const envelope = await result.json();
+    const asJson = JSON.parse(await decrypt(envelope.value, privateKey));
+    
+    console.log("Decrypted", asJson);
+}
+
+async function generateKeyPair() {
     const { publicKey, privateKey } = await window.crypto.subtle.generateKey(
         {
             name: "RSA-OAEP",
@@ -10,44 +29,15 @@
         ["encrypt", "decrypt"]
     );
 
-    const privateExport = await window.crypto.subtle.exportKey("jwk", privateKey);
-    const publicExport = await window.crypto.subtle.exportKey("jwk", publicKey);
-    return { publicKeyExported: publicExport, privateKeyExported: privateExport, publicKey, privateKey };
+    const publicJwk = await window.crypto.subtle.exportKey("jwk", publicKey);
+    return { publicJwk, privateKey };
 }
 
-async function encrypt(plainText, key, exportedKey) {
-    const data = new TextEncoder().encode(plainText);
-    const encrypted = await window.crypto.subtle.encrypt(
-        { name: "RSA-OAEP" }, key, data
-    );
-    
-    return btoa(String.fromCharCode.apply(null, new Uint8Array(encrypted)));
-}
-
-async function decrypt(encrypted, key) {    
+async function decrypt(encrypted, privateKey) {    
     const encryptedSourceBytes = new Uint8Array(atob(encrypted).split("").map(c => c.charCodeAt(0)));
     const decrypted = await window.crypto.subtle.decrypt(
-        { name: "RSA-OAEP" }, key, encryptedSourceBytes
+        { name: "RSA-OAEP" }, privateKey, encryptedSourceBytes
     );
 
     return new TextDecoder().decode(decrypted);
 }
-
-(async () => {
-    const pair = await generateKeyPair();
-
-    console.log("Sending request with public key:", pair.publicKeyExported);
-
-    const result = await fetch('/api', {
-        method: 'GET',
-        headers: {
-            'Content-Type': 'application/json',
-            'Client-Encryption-Key': btoa(JSON.stringify(pair.publicKeyExported))
-        }
-    });
-
-    const body = await result.text();
-    
-    const asText = await decrypt(body, pair.privateKey);
-    console.log("Decrypted", asText);
-})();

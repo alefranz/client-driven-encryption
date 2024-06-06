@@ -14,6 +14,8 @@ public class ClientDrivenEncryptionMiddleware : IMiddleware
             return;
         }
         
+        context.Response.Headers.Append("Content-Type", "application/encrypted+json");
+        
         var bodyStream = context.Response.Body;
 
         using var readableResponseStream = new MemoryStream();
@@ -26,15 +28,17 @@ public class ClientDrivenEncryptionMiddleware : IMiddleware
 
         var key = header.FirstOrDefault();
         var encryptedBody = Encrypt(responseBody, key!);
+        var response = new EncryptedResponse(encryptedBody, key!);
+        var asString = JsonSerializer.Serialize(response);
 
         using var rewrittenStream = new MemoryStream();
         await using var sw = new StreamWriter(rewrittenStream);
-        await sw.WriteAsync(encryptedBody);
+        await sw.WriteAsync(asString);
         await sw.FlushAsync();
 
         rewrittenStream.Seek(0, SeekOrigin.Begin);
         await rewrittenStream.CopyToAsync(bodyStream);
-
+        
         context.Response.Body = bodyStream;
     }
 
@@ -44,7 +48,6 @@ public class ClientDrivenEncryptionMiddleware : IMiddleware
         var asString = Encoding.UTF8.GetString(fromBase64String);
         var jsonWebKey = JsonSerializer.Deserialize<JsonWebKey>(asString);
 
-        //body = "Hello, World!";
         var dataToEncrypt = Encoding.UTF8.GetBytes(body);
 
         var rsaParameters = new RSAParameters
@@ -53,9 +56,6 @@ public class ClientDrivenEncryptionMiddleware : IMiddleware
             Modulus = DecodeUrlBase64(jsonWebKey.n)
         };
         
-        Console.WriteLine("Exponent: " + string.Join(", ", rsaParameters.Exponent));
-        Console.WriteLine("Modulus: " + string.Join(", ", rsaParameters.Modulus));
-
         var rsa = RSA.Create(rsaParameters);
         var value = rsa.Encrypt(dataToEncrypt, RSAEncryptionPadding.OaepSHA256);
 
@@ -80,3 +80,6 @@ public record JsonWebKey
 
     public override string ToString() => JsonSerializer.Serialize(this);
 }
+
+// ReSharper disable InconsistentNaming
+public record EncryptedResponse(string value, string publicKey);
