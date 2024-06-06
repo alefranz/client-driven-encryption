@@ -15,6 +15,7 @@
     const asJson = JSON.parse(await decrypt(envelope.value, privateKey));
     
     console.log("Decrypted", asJson);
+    alert(JSON.stringify(asJson));
 }
 
 async function generateKeyPair() {
