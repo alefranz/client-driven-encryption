@@ -2,6 +2,10 @@
     ViewData["Title"] = "Home Page";
 }
 
+@{
+    var publicKey = ViewData["PublicKey"];
+}
+
 <div class="text-center">
     <h1 class="display-4">Welcome</h1>
     <p>This is an example web page that is going to call an API (that also happens to be hosted by this process), but 
@@ -15,7 +19,11 @@
         and the JavaScript code surrounding it is expected to decrypt the response with it's temporary key.
     </p>
     <p>
+        Server Public Key: @publicKey
+    </p>
+    <p>
         <button onclick="callApi()">Call API with key</button>
+        <button onclick="callApiDH()">Call API with DH</button>
     </p>
 </div>
 

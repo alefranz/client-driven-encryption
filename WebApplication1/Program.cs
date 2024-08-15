@@ -1,3 +1,4 @@
+using WebApplication1;
 using WebApplication1.Middleware;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -5,6 +6,8 @@ var builder = WebApplication.CreateBuilder(args);
 // Add services to the container.
 builder.Services.AddControllersWithViews();
 builder.Services.AddSingleton<ClientDrivenEncryptionMiddleware>();
+builder.Services.AddSingleton<ServerKeyStore>();
+builder.Services.AddSingleton<ClientKeysStore>();
 
 var app = builder.Build();
 
